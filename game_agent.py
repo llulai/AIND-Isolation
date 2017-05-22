@@ -2,7 +2,6 @@
 test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
-import random
 
 
 class SearchTimeout(Exception):
@@ -235,9 +234,9 @@ class MinimaxPlayer(IsolationPlayer):
 
         moves = game.get_legal_moves(self)
         if not moves:
-            return (-1, -1)
+            return -1, -1
 
-        score, move = max([(self.__min_value(game.forecast_move(move), self.search_depth - 1), move) for move in moves])
+        score, move = max([(self.__min_value(game.forecast_move(move), depth - 1), move) for move in moves])
 
         return move
 
@@ -305,18 +304,13 @@ class AlphaBetaPlayer(IsolationPlayer):
         try:
             # The try/except block will automatically catch the exception
             # raised when the timer is about to expire.
-            #for depth in range(1, self.search_depth + 1):
             depth = 1
             while True:
                 best_move = self.alphabeta(game, depth)
                 depth += 1
-            #return self.alphabeta(game, self.search_depth)
 
         except SearchTimeout:
-            return best_move # Handle any actions required after timeout as needed
-
-        # Return the best move from the last completed search iteration
-        return best_move
+            return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -368,9 +362,9 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         moves = game.get_legal_moves(self)
         if not moves:
-            return (-1, -1)
+            return -1, -1
 
-        score, move = max([(self.__min_value(game.forecast_move(move), depth, alpha, beta), move) for move in moves])
+        score, move = self.__max_value(game, depth, alpha, beta)
 
         return move
 
@@ -380,16 +374,20 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         moves = game.get_legal_moves(self)
         if depth == 0 or not moves:
-            return self.score(game, self)
-        else:
-            v = - float('inf')
-            for move in moves:
-                v = max([self.__min_value(game.forecast_move(move), depth - 1, alpha, beta), v])
-                if v >= beta:
-                    return v
-                alpha = max(alpha, v)
+            return self.score(game, self), (-1, -1)
 
-            return v
+        v, mv = - float('inf'), moves[0]
+
+        for move in moves:
+            sc, _ = self.__min_value(game.forecast_move(move), depth - 1, alpha, beta)
+            v, mv = max((sc, move), (v, mv))
+
+            if v >= beta:
+                return v, mv
+
+            alpha = max(alpha, v)
+
+        return v, mv
 
     def __min_value(self, game, depth, alpha, beta):
         if self.time_left() < self.TIMER_THRESHOLD:
@@ -397,13 +395,16 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         moves = game.get_legal_moves(game.get_opponent(self))
         if depth == 0 or not moves:
-            return self.score(game, self)
-        else:
-            v = float('inf')
-            for move in moves:
-                v = min([self.__max_value(game.forecast_move(move), depth - 1, alpha, beta), v])
-                if v <= alpha:
-                    return v
-                beta = min(beta, v)
+            return self.score(game, self), (-1, -1)
 
-            return v
+        v, mv = float('inf'), moves[0]
+        for move in moves:
+            sc, _ = self.__max_value(game.forecast_move(move), depth - 1, alpha, beta)
+            v, mv = min((sc, move), (v, mv))
+
+            if v <= alpha:
+                return v, mv
+
+            beta = min(beta, v)
+
+        return v, mv
