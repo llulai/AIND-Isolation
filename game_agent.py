@@ -3,6 +3,7 @@ test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
 import random
+from sample_players import *
 
 
 class SearchTimeout(Exception):
@@ -35,7 +36,7 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    return improved_score(game, player)
 
 
 def custom_score_2(game, player):
@@ -61,7 +62,7 @@ def custom_score_2(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    return center_score(game, player)
 
 
 def custom_score_3(game, player):
@@ -87,7 +88,7 @@ def custom_score_3(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    return center_score(game, player)
 
 
 class IsolationPlayer:
@@ -212,8 +213,33 @@ class MinimaxPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        moves = game.get_legal_moves(self)
+        if not moves:
+            return (-1, -1)
+
+        score, move = max([(self.__min_value(game.forecast_move(move), self.search_depth), move) for move in moves])
+
+        return move
+
+    def __min_value(self, game, depth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        moves = game.get_legal_moves(game.get_opponent(self))
+        if depth == 0 or not moves:
+            return self.score(game, self)
+        else:
+            return min([min([self.__max_value(game.forecast_move(move), depth - 1) for move in moves]), float('inf')])
+
+    def __max_value(self, game, depth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        moves = game.get_legal_moves(self)
+        if depth == 0 or not moves:
+            return self.score(game, self)
+        else:
+            return max([max([self.__min_value(game.forecast_move(move), depth - 1) for move in moves]), -float('inf')])
 
 
 class AlphaBetaPlayer(IsolationPlayer):
@@ -254,8 +280,23 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        best_move = (-1, -1)
+
+        try:
+            # The try/except block will automatically catch the exception
+            # raised when the timer is about to expire.
+            #for depth in range(1, self.search_depth + 1):
+            depth = 1
+            while True:
+                best_move = self.alphabeta(game, depth)
+                depth += 1
+            #return self.alphabeta(game, self.search_depth)
+
+        except SearchTimeout:
+            return best_move # Handle any actions required after timeout as needed
+
+        # Return the best move from the last completed search iteration
+        return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -305,5 +346,44 @@ class AlphaBetaPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        moves = game.get_legal_moves(self)
+        if not moves:
+            return (-1, -1)
+
+        score, move = max([(self.__min_value(game.forecast_move(move), depth, alpha, beta), move) for move in moves])
+
+        return move
+
+    def __max_value(self, game, depth, alpha, beta):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        moves = game.get_legal_moves(self)
+        if depth == 0 or not moves:
+            return self.score(game, self)
+        else:
+            v = - float('inf')
+            for move in moves:
+                v = max([self.__min_value(game.forecast_move(move), depth - 1, alpha, beta), v])
+                if v >= beta:
+                    return v
+                alpha = max(alpha, v)
+
+            return v
+
+    def __min_value(self, game, depth, alpha, beta):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        moves = game.get_legal_moves(game.get_opponent(self))
+        if depth == 0 or not moves:
+            return self.score(game, self)
+        else:
+            v = float('inf')
+            for move in moves:
+                v = min([self.__max_value(game.forecast_move(move), depth - 1, alpha, beta), v])
+                if v <= alpha:
+                    return v
+                beta = min(beta, v)
+
+            return v

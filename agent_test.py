@@ -7,7 +7,8 @@ import unittest
 
 import isolation
 import game_agent
-
+from sample_players import *
+from tournament import Agent
 from importlib import reload
 
 
@@ -16,9 +17,13 @@ class IsolationTest(unittest.TestCase):
 
     def setUp(self):
         reload(game_agent)
-        self.player1 = "Player1"
-        self.player2 = "Player2"
+        self.player1 = Agent(game_agent.MinimaxPlayer(score_fn=open_move_score), "MM_Open")
+        self.player2 = Agent(game_agent.MinimaxPlayer(score_fn=improved_score), "MM_Improved")
         self.game = isolation.Board(self.player1, self.player2)
+
+        self.game.play()
+
+
 
 
 if __name__ == '__main__':
