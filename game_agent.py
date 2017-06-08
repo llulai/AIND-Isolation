@@ -3,10 +3,135 @@ test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
 
-
 class SearchTimeout(Exception):
     """Subclass base exception for code clarity. """
     pass
+
+
+def open_move_score(game, player):
+    """The basic evaluation function described in lecture that outputs a score
+    equal to the number of moves open for your computer player on the board.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : hashable
+        One of the objects registered by the game object as a valid player.
+        (i.e., `player` should be either game.__player_1__ or
+        game.__player_2__).
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    return float(len(game.get_legal_moves(player)))
+
+
+def center_score(game, player):
+    """Outputs a score equal to square of the distance from the center of the
+    board to the position of the player.
+
+    This heuristic is only used by the autograder for testing.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : hashable
+        One of the objects registered by the game object as a valid player.
+        (i.e., `player` should be either game.__player_1__ or
+        game.__player_2__).
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    w, h = game.width / 2., game.height / 2.
+    y, x = game.get_player_location(player)
+    return float((h - y)**2 + (w - x)**2)
+
+
+def null_score(game, player):
+    """This heuristic presumes no knowledge for non-terminal states, and
+    returns the same uninformative value for all other states.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : hashable
+        One of the objects registered by the game object as a valid player.
+        (i.e., `player` should be either game.__player_1__ or
+        game.__player_2__).
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state.
+    """
+
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    return 0.
+
+
+def second_move_path(game, player):
+    positions = [(-2, -1), (-2, 1), (-1, -2), (-1, 2),
+                 (1, -2), (1, 2), (2, -1), (2, 1)]
+
+    r, c = game.get_player_location(player)
+
+    score = 0.
+
+    for a in positions:
+        if game.move_is_legal((a[0] + r, a[0] + c)):
+            moves = [(a[0] + b[0], a[1] + b[1]) for b in positions]
+            score += len([(pr, + r, pc + c) for pr, pc in moves if game.move_is_legal((pr + r, pc + c))])
+
+    return score
+
+
+def second_move_map(game, player):
+
+    positions = [(1, 3), (-2, 0), (2, -4), (-3, -1), (-1, -3), (-4, 2), (0, -2), (-3, 3), (3, -3), (1, -1),
+                 (2, 4), (4, -2), (4, 0), (-1, 1), (-3, -3), (3, 3), (-1, -1), (0, 4), (1, -3), (1, 1),
+                 (0, -4), (0, 0), (-3, 1), (-4, 0), (4, 2), (-4, -2), (-1, 3), (3, 1), (3, -1), (-2, -4),
+                 (2, 0), (-2, 4), (0, 2)]
+
+    r, c = game.get_player_location(player)
+    moves = [(pr + r, pc + c) for pr, pc in positions if game.move_is_legal((pr + r, pc + c))]
+
+    return len(moves) * 1.
+
+
+def second_move_map_weighted(game, player):
+
+    return open_move_score(game, player) * second_move_map(game, player)
 
 
 def custom_score(game, player):
@@ -39,9 +164,10 @@ def custom_score(game, player):
     if game.is_winner(player):
         return float("inf")
 
-    own_moves = len(game.get_legal_moves(player))
-    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    return float(own_moves - opp_moves)
+    own_moves = second_move_map_weighted(game, player)
+    opponent_moves = second_move_map_weighted(game, game.get_opponent(player))
+
+    return own_moves - opponent_moves
 
 
 def custom_score_2(game, player):
@@ -72,9 +198,10 @@ def custom_score_2(game, player):
     if game.is_winner(player):
         return float("inf")
 
-    w, h = game.width / 2., game.height / 2.
-    y, x = game.get_player_location(player)
-    return float((h - y)**2 + (w - x)**2)
+    own_moves = second_move_map(game, player)
+    opponent_moves = second_move_map(game, game.get_opponent(player))
+
+    return own_moves - opponent_moves
 
 
 def custom_score_3(game, player):
@@ -105,9 +232,10 @@ def custom_score_3(game, player):
     if game.is_winner(player):
         return float("inf")
 
-    w, h = game.width / 2., game.height / 2.
-    y, x = game.get_player_location(player)
-    return float((h - y)**2 + (w - x)**2)
+    own_moves = second_move_path(game, player)
+    opponent_moves = second_move_path(game, game.get_opponent(player))
+
+    return own_moves - opponent_moves
 
 
 class IsolationPlayer:
@@ -373,6 +501,7 @@ class AlphaBetaPlayer(IsolationPlayer):
             raise SearchTimeout()
 
         moves = game.get_legal_moves(self)
+
         if depth == 0 or not moves:
             return self.score(game, self), (-1, -1)
 
@@ -394,6 +523,7 @@ class AlphaBetaPlayer(IsolationPlayer):
             raise SearchTimeout()
 
         moves = game.get_legal_moves(game.get_opponent(self))
+
         if depth == 0 or not moves:
             return self.score(game, self), (-1, -1)
 
